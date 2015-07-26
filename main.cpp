@@ -4,6 +4,9 @@
 #include <QFile>
 #include <QByteArray>
 #include <QDataStream>
+#include <iostream>
+
+using namespace std;
 
 int main(int argc, char *argv[])
 {
@@ -35,19 +38,19 @@ int main(int argc, char *argv[])
                     {
                         QByteArray dataForWritting = file.readAll();
                         int bytesWritten = tcpSocket->write(dataForWritting);
-                        if(!tcpSocket->waitForBytesWritten(10*1000))
+                        if(!tcpSocket->waitForBytesWritten(10000))
                         {
                             qDebug() << "Error no bytes written" << tcpSocket->errorString() << endl;
                         }else
                         {
-                            qDebug() << bytesWritten << " bytes written. " << endl;
+                            qDebug() << "Bytes for writting: " << dataForWritting.size() << ", " << bytesWritten << " bytes written. " << endl;
                         }
                     }
                 }else if(type == "string")
                 {
                     QByteArray data = argv[5];
                     int bytesWritten = tcpSocket->write(data);
-                    if(!tcpSocket->waitForBytesWritten(10*1000))
+                    if(!tcpSocket->waitForBytesWritten(10000))
                     {
                         qDebug() << "Error no bytes written" << tcpSocket->errorString() << endl;
                     }else
@@ -67,18 +70,59 @@ int main(int argc, char *argv[])
             if(!tcpServer->listen(QHostAddress(QString(argv[2])),port.toInt())){
                 qDebug() << "Error, could not start listening, " << tcpServer->serverError() << endl;
             }else{
-                if(tcpServer->waitForNewConnection(10*1000)){
-                    QTcpSocket *sock = tcpServer->nextPendingConnection();
-                    sock->waitForReadyRead(3000);
-                    qDebug() << "Connection established, printing data: " << sock->readAll();
-                    sock->close();
-                    tcpServer->close();
-                    delete sock;
-                    delete tcpServer;
-                }else{
-                    qDebug() << "No incoming connection closing server" << endl;
-                    tcpServer->close();
-                    delete tcpServer;
+                bool working = true;
+                while(working){
+                    if(tcpServer->waitForNewConnection(10*1000)){
+                        QTcpSocket *sock = tcpServer->nextPendingConnection();
+                        sock->waitForReadyRead(10*1000);
+                        QByteArray receivedData;
+                        while(sock->bytesAvailable()){
+                            qDebug() << sock->bytesAvailable() << " bytes available for writting" << endl;
+                            receivedData.append(sock->readAll());
+                            sock->waitForReadyRead(10*1000);
+                        }
+                        qDebug() << "Connection established, data received, bytes received: " << receivedData.size() << endl;
+                        sock->close();
+                        delete sock;
+                        bool tryAgain = true;
+                        while(tryAgain){
+                            qDebug() << "Enter filename for the new file (ex: picture.png) :";
+                            QTextStream s(stdin);
+                            QString fileName = s.readLine();
+                            if (!fileName.isEmpty())
+                            {
+                                QFile file(fileName);
+                                if(!file.open(QFile::WriteOnly)){
+                                    qDebug() << "Could not open file for writing!" << endl;
+                                }else{
+                                    file.write(receivedData);
+                                    file.flush();
+                                    file.waitForBytesWritten(10*1000);
+                                }
+                                tryAgain = false;
+                            }else{
+                                qDebug() << "You didnt enter filename, try again" << endl;
+                            }
+                        }
+                        qDebug() << "Should i wait for other request? (y/n) default = yes" ;
+                        char  answer;
+                        cin >> answer;
+                        if(answer == 'n'){
+                            working = false;
+                            tcpServer->close();
+                            delete tcpServer;
+                        }
+                    }else{
+                        qDebug() << "No incoming connection" << endl;
+                        qDebug() << "Should i check for another request? (Yes / No)" ;
+                        char answer;
+                        cin >> answer;
+                        if(answer == 'n'){
+                            working = false;
+                            tcpServer->close();
+                            delete tcpServer;
+                        }
+                    }
                 }
             }
         }else
