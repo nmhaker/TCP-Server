@@ -89,9 +89,13 @@ int main(int argc, char *argv[])
                             qDebug() << "Enter filename for the new file (ex: picture.png) :";
                             QTextStream s(stdin);
                             QString fileName = s.readLine();
-                            if (!fileName.isEmpty())
+                            qDebug() << "Enter destination path: ";
+                            QTextStream d(stdin);
+                            QString destinationPath = d.readLine();
+                            if (!fileName.isEmpty() && !destinationPath.isEmpty())
                             {
-                                QFile file(fileName);
+                                qDebug() << "Tthe destination string: " << destinationPath + fileName;
+                                QFile file(destinationPath + fileName);
                                 if(!file.open(QFile::WriteOnly)){
                                     qDebug() << "Could not open file for writing!" << endl;
                                 }else{
