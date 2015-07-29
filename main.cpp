@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
                             receivedData.append(sock->readAll());
                             if(receivedData.size() > 3 * 100000){
                                 if(!file_handle.isOpen()){
-                                    if(!file_handle.open(QFile::WriteOnly)){
+                                    if(!file_handle.open(QFile::WriteOnly | QFile::Append | QFile::Text)){
                                         qDebug() << "Could not open file for writing!" << endl;
                                     }else{
                                         file_handle.write(receivedData);
